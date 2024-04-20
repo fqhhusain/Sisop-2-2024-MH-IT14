@@ -331,7 +331,9 @@ NB: Semua soal tidak boleh dikerjakan menggunakan fungsi system(). Di utamakan m
 #include <string.h>
 #include <unistd.h>
 #include <signal.h>
-
+```
+Library yang digunakan
+```
 void open_windows(char* app, int num, FILE* pid_file) {
     for (int i = 0; i < num; i++) {
         pid_t pid = fork();
@@ -349,6 +351,9 @@ void open_windows(char* app, int num, FILE* pid_file) {
         }
     }
 }
+```
+Fungsi untuk membuka window
+```
 
 void read_config_file(const char* file_path, char* apps[], int* num_apps) {
     FILE* file = fopen(file_path, "r");
@@ -370,6 +375,9 @@ void read_config_file(const char* file_path, char* apps[], int* num_apps) {
 
     fclose(file);
 }
+```
+Fungsi untuk membaca file konfigurasi
+```
 
 int main(int argc, char* argv[]) {
     if (argc < 2) {
