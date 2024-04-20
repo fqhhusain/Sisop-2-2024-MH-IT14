@@ -49,6 +49,9 @@ void log_action(char *username, char *filename, char *action) {
     fprintf(f, "[%s][%02d:%02d:%02d] - %s - %s\n", username, tm.tm_hour, tm.tm_min, tm.tm_sec, filename, action);
     fclose(f);
 }
+```
+Melakukan pencatatan setiap proses yang terjadi pada file history.log
+```
 
 char rot19(char c) {
     if ('a' <= c && c <= 'z') {
@@ -59,6 +62,9 @@ char rot19(char c) {
         return c;
     }
 }
+```
+Melakukan dekripsi ROT19
+```
 
 void rename_files()
 {
@@ -90,7 +96,9 @@ void rename_files()
         closedir(d);
     }
 }
-
+```
+Mulai file ke 7 dan seterusnya dilakukan rename berdasarkan hasil dekripsi ROT19
+```
 
 void run_exec(char *path, char *argv[])
 {
@@ -108,12 +116,18 @@ void run_exec(char *path, char *argv[])
         ((void)wait(&status));
     }
 }
+```
+Fungsi untuk melakukan command exec
+```
 
 void download(char filename[], char url[])
 {
     char *argv[] = {"wget", url, "-O", filename, "-q", NULL};
     run_exec("/usr/bin/wget", argv);
 }
+```
+Melakukan download file 
+```
 
 void extract_zip(char filename[], char output[])
 {
@@ -122,7 +136,9 @@ void extract_zip(char filename[], char output[])
     remove(filename);
     log_action(getpwuid(getuid())->pw_name, filename, "Successfully extracted and deleted.");
 }
-
+```
+Melakukan unzip file
+```
 void filtering() {
     DIR *d;
     struct dirent *dir;
@@ -156,10 +172,16 @@ void filtering() {
         closedir(d);
     }
 }
+```
+Mengganti nama file berdasarkan filter tertentu
+```
 
 void create_backup_folder() {
     mkdir("/home/kali/Sisop/soal_2/library/backup", 0777);
 }
+```
+Membuat folder untuk menyimpan backup
+```
 
 void move_files(char *source_folder, char *dest_folder, char *action) {
     DIR *d;
@@ -179,6 +201,9 @@ void move_files(char *source_folder, char *dest_folder, char *action) {
         closedir(d);
     }
 }
+```
+Melakukan pemindahan file untuk fungsi opsi backup dan restore
+```
 
 int mode = 0; // 0 for default, 1 for backup, 2 for restore
 
@@ -191,13 +216,18 @@ void handle_signal(int sig) {
         mode = 2;
     }
 }
+```
+Melakukan signaling untuk mengubah option dari program
+```
 
 volatile sig_atomic_t stop;
 
 void inthand(int signum) {
     stop = 1;
 }
-
+```
+Melakukan pengamanan untuk menghentikan program
+```
 
 int main(int argc, char *argv[]) {
   
