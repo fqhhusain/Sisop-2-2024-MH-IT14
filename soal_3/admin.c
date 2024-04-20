@@ -10,177 +10,154 @@ __________                             .__  __     ____   _____
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h>
 #include <string.h>
+#include <unistd.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
-#include <errno.h>
-#include <signal.h>
 #include <time.h>
+#include <signal.h>
+#include <sys/wait.h>
+#include <dirent.h>
 
 #define LOG_FILE_EXTENSION ".log"
-#define MAX_FILENAME_LENGTH 256
-#define MAX_COMMAND_LENGTH 512
+#define MAX_USERNAME_LENGTH 100
+#define MAX_LOG_ENTRY_LENGTH 200
+#define MAX_COMMAND_LENGTH 200 // Perbesar ukuran buffer
 
-int monitor_user(const char *user);
-void stop_monitoring(const char *user);
-void block_processes(const char *user);
-void unblock_processes(const char *user);
-void log_event(const char *user, const char *pid, const char *process, const char *status);
-void signal_handler(int signum);
+// Fungsi untuk mendapatkan waktu saat ini dalam format yang sesuai
+char* get_current_time() {
+    time_t rawtime;
+    struct tm *info;
+    char *buffer = (char*)malloc(sizeof(char) * 30);
 
+    time(&rawtime);
+    info = localtime(&rawtime);
+    strftime(buffer, 30, "%d:%m:%Y-%H:%M:%S", info);
+
+    return buffer;
+}
+
+// Fungsi untuk mendapatkan nama proses berdasarkan PID
+char* proc_name(char *pid) {
+    char proc_path[20];
+    FILE *fp;
+    static char proc_name[100];
+
+    snprintf(proc_path, sizeof(proc_path), "/proc/%s/comm", pid);
+    fp = fopen(proc_path, "r");
+    if (fp != NULL) {
+        fscanf(fp, "%s", proc_name);
+        fclose(fp);
+    } else {
+        strcpy(proc_name, "?");
+    }
+
+    return proc_name;
+}
+
+// Fungsi untuk melakukan logging event
+void log_event(char *username, char *pid, char *process_name, int success) {
+    char filename[MAX_USERNAME_LENGTH + strlen(LOG_FILE_EXTENSION) + 1];
+    snprintf(filename, sizeof(filename), "%s%s", username, LOG_FILE_EXTENSION);
+
+    FILE *file = fopen(filename, "a");
+    if (file != NULL) {
+        char *status = success ? "JALAN" : "GAGAL";
+        char *time_str = get_current_time();
+        char *proc = proc_name(pid);
+        char day_month_year[12], hour_minute_second[9];
+        sscanf(time_str, "%10[^-]-%9s", day_month_year, hour_minute_second);
+        fprintf(file, "[%s]-[%s]-%s-%s-%s_%s\n", day_month_year, hour_minute_second, pid, proc, process_name, status);
+        free(time_str);
+        fclose(file);
+    }
+}
+
+// Fungsi untuk memonitor proses yang dilakukan oleh user
+void monitor_processes(char *username) {
+    char command[MAX_COMMAND_LENGTH + MAX_USERNAME_LENGTH + 3]; // "-u username\0"
+    snprintf(command, sizeof(command), "ps -u %s", username);
+
+    while (1) {
+        FILE *ps_output = popen(command, "r");
+        if (ps_output != NULL) {
+            char line[256];
+            fgets(line, sizeof(line), ps_output); // Skip header line
+            while (fgets(line, sizeof(line), ps_output) != NULL) {
+                char pid[10], process_name[100];
+                sscanf(line, "%s %s", pid, process_name);
+                log_event(username, pid, process_name, 1);
+            }
+            pclose(ps_output);
+        }
+        sleep(1);
+    }
+}
+
+// Fungsi untuk menghentikan pemantauan proses
+void stop_monitoring(const char *username) {
+    char command[MAX_COMMAND_LENGTH]; // Perbesar ukuran buffer
+    snprintf(command, sizeof(command), "pkill -f './admin -m %s'", username);
+    int result = system(command);
+    if (result == -1) {
+        perror("Error stopping monitoring");
+    } else {
+        printf("Monitoring stopped for user: %s\n", username);
+    }
+}
+
+// Fungsi untuk menangani perintah yang diberikan kepada program
+void handle_command(char *username, char *option) {
+    char filename[MAX_USERNAME_LENGTH + strlen(LOG_FILE_EXTENSION) + 1];
+    snprintf(filename, sizeof(filename), "%s%s", username, LOG_FILE_EXTENSION);
+
+    static pid_t monitor_pid = -1; // Variabel untuk menyimpan PID proses monitor
+
+    if (strncmp(option, "-m", 2) == 0) {
+        if (monitor_pid == -1) {
+            monitor_pid = fork();
+            if (monitor_pid == 0) {
+                monitor_processes(username);
+            } else if (monitor_pid < 0) {
+                perror("Error forking");
+            }
+        } else {
+            printf("Monitoring already started for user: %s\n", username);
+        }
+    } else if (strncmp(option, "-s", 2) == 0) {
+        stop_monitoring(username);
+    } else if (strncmp(option, "-c", 2) == 0) {
+        log_event(username, "N/A", "Proses digagalkan", 0);
+    } else if (strncmp(option, "-a", 2) == 0) {
+        if (remove(filename) != 0) {
+            perror("Error removing log file");
+        } else {
+            printf("Log file removed for user: %s\n", username);
+        }
+        if (monitor_pid != -1) {
+            if (kill(monitor_pid, SIGKILL) == -1) {
+                perror("Error killing monitoring process");
+            } else {
+                printf("Monitoring process killed for user: %s\n", username);
+            }
+            monitor_pid = -1;
+        }
+    } else {
+        printf("Invalid option: %s\n", option);
+    }
+}
+
+// Fungsi utama program
 int main(int argc, char *argv[]) {
     if (argc < 3) {
-        printf("Usage: %s [-m/-s/-c/-a] <user>\n", argv[0]);
+        printf("Usage: %s <option> <username>\n", argv[0]);
         return 1;
     }
 
-    char *user = argv[2];
-
-    if (strcmp(argv[1], "-m") == 0) {
-        // Start monitoring
-        if (monitor_user(user) == -1) {
-            perror("Failed to start monitoring");
-            return 1;
-        }
-    } else if (strcmp(argv[1], "-s") == 0) {
-        // Stop monitoring
-        stop_monitoring(user);
-    } else if (strcmp(argv[1], "-c") == 0) {
-        // Block processes
-        block_processes(user);
-    } else if (strcmp(argv[1], "-a") == 0) {
-        // Unblock processes
-        unblock_processes(user);
-    } else {
-        printf("Invalid option\n");
-        return 1;
-    }
+    char *option = argv[1];
+    char *username = argv[2];
+    handle_command(username, option);
 
     return 0;
-}
-
-int monitor_user(const char *user) {
-    // Forking to create a daemon process
-    pid_t pid = fork();
-    if (pid < 0) {
-        perror("fork");
-        return -1;
-    } else if (pid > 0) {
-        // Parent process
-        printf("Monitoring started for user: %s\n", user);
-        return 0;
-    }
-
-    // Child process (daemon)
-    umask(0);
-    setsid();
-
-    // Register signal handler for SIGTERM
-    signal(SIGTERM, signal_handler);
-
-    // Monitoring loop
-    char log_filename[MAX_FILENAME_LENGTH];
-    snprintf(log_filename, MAX_FILENAME_LENGTH, "%s%s", user, LOG_FILE_EXTENSION);
-    int log_fd = open(log_filename, O_WRONLY | O_CREAT | O_APPEND, S_IRUSR | S_IWUSR);
-    if (log_fd == -1) {
-        perror("open");
-        exit(EXIT_FAILURE);
-    }
-
-    char command[MAX_COMMAND_LENGTH];
-    while (1) {
-        snprintf(command, MAX_COMMAND_LENGTH, "ps -u %s", user);
-        FILE *ps_output = popen(command, "r");
-        if (ps_output == NULL) {
-            perror("popen");
-            exit(EXIT_FAILURE);
-        }
-
-        char line[MAX_COMMAND_LENGTH];
-        while (fgets(line, sizeof(line), ps_output)) {
-            if (strstr(line, "PID") != NULL) continue; // Skip header line
-            char *pid = strtok(line, " ");
-            char *process = strtok(NULL, "\n");
-            if (process != NULL) {
-                // Log the process
-                log_event(user, pid, process, "JALAN");
-            }
-        }
-
-        pclose(ps_output);
-        sleep(1); // Monitoring interval
-    }
-
-    close(log_fd);
-    return 0;
-}
-
-void stop_monitoring(const char *user) {
-    // Find the PID of the monitoring process and send SIGTERM to it
-    char command[MAX_COMMAND_LENGTH];
-    snprintf(command, MAX_COMMAND_LENGTH, "ps -ef | grep './admin -m %s' | grep -v grep | awk '{print $2}'", user);
-    FILE *pid_output = popen(command, "r");
-    if (pid_output == NULL) {
-        perror("popen");
-        exit(EXIT_FAILURE);
-    }
-
-    char pid_str[16];
-    if (fgets(pid_str, sizeof(pid_str), pid_output) != NULL) {
-        pid_t pid = atoi(pid_str);
-        if (pid > 0) {
-            kill(pid, SIGTERM);
-            printf("Monitoring stopped for user: %s\n", user);
-        }
-    }
-
-    pclose(pid_output);
-}
-
-void block_processes(const char *user) {
-    // Implement actual process blocking logic here
-    // For the sake of simplicity, let's just log that processes are blocked
-    printf("Blocking processes for user: %s\n", user);
-
-    // Log the blocking action
-    log_event(user, "-", "Blocked processes", "GAGAL");
-}
-
-void unblock_processes(const char *user) {
-    // Implement process unblocking
-    // For the sake of simplicity, let's say it's a placeholder
-    printf("Unblocking processes for user: %s\n", user);
-}
-
-void log_event(const char *user, const char *pid, const char *process, const char *status) {
-    time_t now = time(NULL);
-    struct tm *local_time = localtime(&now);
-
-    char log_filename[MAX_FILENAME_LENGTH];
-    snprintf(log_filename, MAX_FILENAME_LENGTH, "%s%s", user, LOG_FILE_EXTENSION);
-
-    char timestamp[20];
-    strftime(timestamp, sizeof(timestamp), "[%d:%m:%Y]-[%H:%M:%S]", local_time);
-
-    int log_fd = open(log_filename, O_WRONLY | O_CREAT | O_APPEND, S_IRUSR | S_IWUSR);
-    if (log_fd == -1) {
-        perror("open");
-        exit(EXIT_FAILURE);
-    }
-
-    char log_entry[MAX_COMMAND_LENGTH];
-    snprintf(log_entry, MAX_COMMAND_LENGTH, "%s-%s-%s-%s_%s\n", timestamp, pid, process, user, status);
-    write(log_fd, log_entry, strlen(log_entry));
-
-    close(log_fd);
-}
-
-void signal_handler(int signum) {
-    // Signal handler for SIGTERM
-    if (signum == SIGTERM) {
-        printf("Received SIGTERM signal. Exiting...\n");
-        exit(EXIT_SUCCESS);
-    }
 }
