@@ -22,6 +22,7 @@ kill -SIGUSR2 <pid_program>
 kill -TERM pid
 ```
 Code Lengkap
+Library yang digunakan
 ```
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -37,6 +38,9 @@ Code Lengkap
 #include <signal.h>
 #include <time.h>
 #include <pwd.h>
+```
+Penjelasan dari setiap fungsi
+```
 
 void log_action(char *username, char *filename, char *action) {
     FILE *f = fopen("/home/kali/Sisop/soal_2/history.log", "a");
