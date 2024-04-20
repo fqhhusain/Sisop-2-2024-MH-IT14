@@ -6,7 +6,20 @@ Laporan pengerjaan soal shift modul 2 Praktikum Sistem Operasi 2024 oleh Kelompo
 3. Muhammad Syahmi Ash Shidqi  : 5027231085
 
 Soal Shift Modul 2
-
+2. 
+Cara Bermain
+```
+code . management.c
+gcc management.c -o management 
+./management
+./management -m restore
+./management -m backup
+kill -SIGRTMIN <pid_program>
+kill -SIGUSR1 <pid_program>
+kill -SIGUSR2 <pid_program>
+kill -TERM pid
+```
+Code Lengkap
 ```
 #include <sys/types.h>
 #include <sys/stat.h>
