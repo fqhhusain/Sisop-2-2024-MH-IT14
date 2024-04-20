@@ -8,6 +8,7 @@ __________                             .__  __     ____   _____
                      \/\/          \/                       |__| 
 */
 
+//library
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -23,9 +24,9 @@ __________                             .__  __     ____   _____
 #define LOG_FILE_EXTENSION ".log"
 #define MAX_USERNAME_LENGTH 100
 #define MAX_LOG_ENTRY_LENGTH 200
-#define MAX_COMMAND_LENGTH 200 // Perbesar ukuran buffer
+#define MAX_COMMAND_LENGTH 200 
 
-// Fungsi untuk mendapatkan waktu saat ini dalam format yang sesuai
+// Fungsi untuk mendapatkan waktu saat ini
 char* get_current_time() {
     time_t rawtime;
     struct tm *info;
@@ -56,7 +57,7 @@ char* proc_name(char *pid) {
     return proc_name;
 }
 
-// Fungsi untuk melakukan logging event
+// Fungsi untuk melakukan logging event(mencatat proses)
 void log_event(char *username, char *pid, char *process_name, int success) {
     char filename[MAX_USERNAME_LENGTH + strlen(LOG_FILE_EXTENSION) + 1];
     snprintf(filename, sizeof(filename), "%s%s", username, LOG_FILE_EXTENSION);
@@ -68,7 +69,7 @@ void log_event(char *username, char *pid, char *process_name, int success) {
         char *proc = proc_name(pid);
         char day_month_year[12], hour_minute_second[9];
         sscanf(time_str, "%10[^-]-%9s", day_month_year, hour_minute_second);
-        fprintf(file, "[%s]-[%s]-%s-%s-%s_%s\n", day_month_year, hour_minute_second, pid, proc, process_name, status);
+        fprintf(file, "[%s]-[%s]-%s_%s_%s_%s\n", day_month_year, hour_minute_second, pid, proc, "process", status);
         free(time_str);
         fclose(file);
     }
@@ -101,9 +102,9 @@ void stop_monitoring(const char *username) {
     snprintf(command, sizeof(command), "pkill -f './admin -m %s'", username);
     int result = system(command);
     if (result == -1) {
-        perror("Error stopping monitoring");
+        perror("Error Gagal menghentikan");
     } else {
-        printf("Monitoring stopped for user: %s\n", username);
+        printf("Monitoring berhasil dihentikan untuk user: %s\n", username);
     }
 }
 
@@ -115,6 +116,7 @@ void handle_command(char *username, char *option) {
     static pid_t monitor_pid = -1; // Variabel untuk menyimpan PID proses monitor
 
     if (strncmp(option, "-m", 2) == 0) {
+        printf("Monitoring berhasil dimulai untuk user: %s\n", username);
         if (monitor_pid == -1) {
             monitor_pid = fork();
             if (monitor_pid == 0) {
@@ -123,28 +125,30 @@ void handle_command(char *username, char *option) {
                 perror("Error forking");
             }
         } else {
-            printf("Monitoring already started for user: %s\n", username);
+            printf("Monitoring telah dilakukan untuk user: %s\n", username);
         }
     } else if (strncmp(option, "-s", 2) == 0) {
         stop_monitoring(username);
-    } else if (strncmp(option, "-c", 2) == 0) {
-        log_event(username, "N/A", "Proses digagalkan", 0);
-    } else if (strncmp(option, "-a", 2) == 0) {
         if (remove(filename) != 0) {
             perror("Error removing log file");
         } else {
             printf("Log file removed for user: %s\n", username);
         }
+    } else if (strncmp(option, "-c", 2) == 0) {
+        log_event(username, "N/A", "Proses digagalkan", 0);
+        printf("Proses berhasil digagalkan untuk user: %s\n", username);
+    } else if (strncmp(option, "-a", 2) == 0) {
+        printf("Berhasil menghentikan proses penggagalan untuk user: %s\n", username);
         if (monitor_pid != -1) {
             if (kill(monitor_pid, SIGKILL) == -1) {
-                perror("Error killing monitoring process");
+                perror("Error! Gagal menghentikan penggagalan proses");
             } else {
-                printf("Monitoring process killed for user: %s\n", username);
+                printf("Berhasil menghentikan penggagalan user: %s\n", username);
             }
             monitor_pid = -1;
         }
     } else {
-        printf("Invalid option: %s\n", option);
+        printf("Opsi tidak valid: %s\n", option);
     }
 }
 
@@ -161,3 +165,4 @@ int main(int argc, char *argv[]) {
 
     return 0;
 }
+
