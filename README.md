@@ -329,6 +329,18 @@ setup -f file.conf
 NB: Mohon untuk testing, adaptasikan dengan kemampuan device masing-masing. Jangan menjalankan program jika device anda tidak kuat (contohnya laptop anda menggunakan RAM hanya 2gb namun mentesting dengan menjalankan setup -o firefox 10 wireshark 8). Jika terdapat kerusakan dikarenakan testing dari soal, ASISTEN LAB tidak memiliki tanggung jawab apapun terhadap kerusakan tersebut.
 
 NB: Semua soal tidak boleh dikerjakan menggunakan fungsi system(). Di utamakan menggunakan fungsi fork() atau exec().
+Cara Bermain
+```
+./setup -o <app1> <num1> <app2> <num2>.....<appN> <numN>
+./setup -o firefox 2 wireshark 2
+./setup -f file.conf
+./setup -k
+./setup -k file.conf 
+```
+-o untuk membuka aplikasi
+-f untuk membuka aplikasi berdasarkan file konfigurasi
+-k untuk mematikan semua aplikasi yang dijalankan oleh program
+-k <filename> untuk mematikan aplikasi berdasarkan file konfigurasi
 ```
 #include <stdio.h>
 #include <stdlib.h>
