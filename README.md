@@ -23,7 +23,6 @@ kill -SIGUSR1 <pid_program>
 kill -SIGUSR2 <pid_program>
 kill -TERM pid
 ```
-Code Lengkap
 Library yang digunakan
 ```
 #include <sys/types.h>
