@@ -326,19 +326,10 @@ Contoh penggunaan: ./management -m backup
   }
 }
 ```
-Berikut adalah struktur folder untuk pengerjaan nomor 2:
-    soal_2/
-    ├── history.log
-    ├── management.c
-    └── library/
-        └── backup/
 contoh penggunaan
 ![Screenshot_2024-04-24_03_23_55](https://github.com/fqhhusain/Sisop-2-2024-MH-IT14/assets/88548292/a4556d02-a688-4273-bf49-618dc5a31b29)
 
 ![Screenshot_2024-04-24_03_29_55](https://github.com/fqhhusain/Sisop-2-2024-MH-IT14/assets/88548292/e61c6fc4-00ee-4fe2-b1fc-3550ee87575e)
-
-
-
 
 3. Pak Heze adalah seorang admin yang baik. Beliau ingin membuat sebuah program admin yang dapat memantau para pengguna sistemnya. Bantulah Pak Heze untuk membuat program  tersebut!
 
