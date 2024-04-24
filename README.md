@@ -51,7 +51,18 @@ void log_action(char *username, char *filename, char *action) {
     fclose(f);
 }
 ```
-Melakukan pencatatan setiap proses yang terjadi pada file history.log
+Mencatat setiap peristiwa yang terjadi ke dalam file .log yang bernama “history.log” dengan ketentuan:
+Format: [nama_user][HH:MM:SS] - <nama_file> - <action>
+nama_user adalah username yang melakukan action terhadap file
+Format action untuk setiap kode:
+kode r3N4mE: Successfully renamed.
+kode d3Let3: Successfully deleted.
+mode backup: Successfully moved to backup.
+mode restore: Successfully restored from backup.
+Contoh pesan log:
+[paul][00:00:00] - r3N4mE.ts - Successfully renamed.
+[paul][00:00:00] - m0V3.xk1 - Successfully restored from backup.
+
 ```
 
 char rot19(char c) {
@@ -175,6 +186,13 @@ void filtering() {
 }
 ```
 Mengganti nama file berdasarkan filter tertentu
+Untuk setiap file dengan nama yang memuat kode d3Let3, hapus file tersebut. 
+Sementara itu, untuk setiap file dengan nama yang memuat kode r3N4mE, lakukan hal berikut:
+Jika ekstensi file adalah “.ts”, rename filenya menjadi “helper.ts”
+Jika ekstensi file adalah “.py”, rename filenya menjadi “calculator.py”
+Jika ekstensi file adalah “.go”, rename filenya menjadi “server.go”
+Jika file tidak memuat salah satu dari ekstensi diatas, rename filenya menjadi “renamed.file”
+
 ```
 
 void create_backup_folder() {
@@ -218,7 +236,11 @@ void handle_signal(int sig) {
     }
 }
 ```
-Melakukan signaling untuk mengubah option dari program
+Melakukan signaling untuk mengganti mode dari program ini tanpa menghentikannya terlebih dahulu. Oleh karena itu, bantulan Paul untuk mengintegrasikan kemampuan untuk mengganti mode ini dengan mengirim sinyal ke daemon, dengan ketentuan:
+SIGRTMIN untuk mode default
+SIGUSR1 untuk mode backup
+SIGUSR2 untuk mode restore
+Contoh penggunaan: kill -SIGUSR2 <pid_program>
 ```
 
 volatile sig_atomic_t stop;
@@ -227,11 +249,12 @@ void inthand(int signum) {
     stop = 1;
 }
 ```
-Melakukan pengamanan untuk menghentikan program
+Mengubah nilai stop menjadi 1 untuk menghentikan while loop pada main function sehingga daemon dapat berhenti dengan efisien
 ```
-
 int main(int argc, char *argv[]) {
-  
+```
+Main function
+```
   pid_t pid, sid;        
 
   pid = fork();     
@@ -255,7 +278,9 @@ int main(int argc, char *argv[]) {
   if ((chdir("/")) < 0) {
     exit(EXIT_FAILURE);
   }
-
+```
+Menjalankan program secara daemon
+```
   close(STDIN_FILENO);
   close(STDOUT_FILENO);
   close(STDERR_FILENO);
@@ -268,7 +293,8 @@ signal(SIGTERM, inthand);
 // Create the log file at the start
   FILE *f = fopen("/home/kali/Sisop/soal_2/history.log", "w");
   fclose(f);
-
+```
+```
 if (argc == 3 && strcmp(argv[1], "-m") == 0) {
         if (strcmp(argv[2], "backup") == 0) {
         mode = 1;
@@ -276,7 +302,13 @@ if (argc == 3 && strcmp(argv[1], "-m") == 0) {
         mode = 2;
     }
 }
-
+```
+Mengatur mode dari program berdasarkan input pengguna
+default: program berjalan seperti biasa untuk me-rename dan menghapus file. Mode ini dieksekusi ketika program dijalankan tanpa argumen tambahan, yaitu dengan command ./management saja
+backup: program memindahkan file dengan kode m0V3 ke sebuah folder bernama “backup”
+restore: program mengembalikan file dengan kode m0V3 ke folder sebelum file tersebut dipindahkan
+Contoh penggunaan: ./management -m backup
+```
   while (!stop) {
     if (mode == 0) {
             download("/home/kali/Sisop/soal_2/library.zip", "https://drive.google.com/uc?export=download&id=1rUIZmp10lXLtCIH3LAZJzRPeRks3Crup");
@@ -290,7 +322,7 @@ if (argc == 3 && strcmp(argv[1], "-m") == 0) {
         } else if (mode == 2) {
             move_files("/home/kali/Sisop/soal_2/library/backup", "/home/kali/Sisop/soal_2/library", "Successfully restored from backup.");
         }
-    sleep(1);
+    sleep(1); //program berjalan setiap satu detik
   }
 }
 ```
