@@ -347,7 +347,7 @@ Cara Bermain
 -o untuk membuka aplikasi
 -f untuk membuka aplikasi berdasarkan file konfigurasi
 -k untuk mematikan semua aplikasi yang dijalankan oleh program
--k <filename> untuk mematikan aplikasi berdasarkan file konfigurasi
+-k filename untuk mematikan aplikasi berdasarkan file konfigurasi
 ```
 #include <stdio.h>
 #include <stdlib.h>
@@ -422,7 +422,8 @@ int main(int argc, char* argv[]) {
             exit(EXIT_FAILURE);
         }
     }
-
+```
+```
     if (strcmp(option, "-o") == 0) {
         if (argc % 2 != 0) {
             printf("Invalid number of arguments. Usage: ./setup -o <app1> <num1> <app2> <num2> ... <appN> <numN>\n");
@@ -433,6 +434,9 @@ int main(int argc, char* argv[]) {
             int num = atoi(argv[i + 1]);
             open_windows(app, num, pid_file);
         }
+```
+Option -o untuk membuka window berdasarkan input user
+```
     } else if (strcmp(option, "-f") == 0) {
         if (argc != 3) {
             printf("Usage: ./setup -f <config_file>\n");
@@ -445,6 +449,9 @@ int main(int argc, char* argv[]) {
         for (int i = 0; i < num_apps; i++) {
             open_windows(apps[i], 1, pid_file);
         }
+```
+option -f membuka aplikasi berdasarkan file konfigurasi
+```
     } else if (strcmp(option, "-k") == 0) {
         if (argc == 2) {
             // New code: kill all processes listed in the PID file
@@ -458,6 +465,9 @@ int main(int argc, char* argv[]) {
                 kill(pid, SIGTERM);
             }
             fclose(pid_file);
+```
+opsi -k untuk mematikan semua window yang telah dibuka oleh program setup sebelumnya
+```
         } else if (argc == 3) {
             char* config_file = argv[2];
             int num_apps;
@@ -475,7 +485,11 @@ int main(int argc, char* argv[]) {
                     exit(EXIT_FAILURE);
                 }
             }
-        } else {
+        }
+```
+terakhir yaitu -k filename untuk mematikan semua window berdasarkan file config
+```
+else {
             printf("Usage: ./setup -k <config_file> or ./setup -k\n");
             return EXIT_FAILURE;
         }
