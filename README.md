@@ -27,7 +27,7 @@ isi file
 Library yang Digunakan
 ```
 #define SUSPICIOUS_STRINGS_COUNT 3
-#define LOG_FILE "/home/kali/Sisop/soal_1/virus.log"
+#define LOG_FILE "/home/ash23/Downloads/soalsisop/virus.log"
 ```
 `#define` Digunakan untuk mendefinisikan 
 `SUSPICIOUS_STRINGS_COUNT` bernilai 3 menentukan jumlah string yang akan direplace
@@ -39,6 +39,8 @@ const char *REPLACEMENT_STRINGS[] = {"[MALWARE]", "[SPYWARE]", "[RANSOMWARE]"};
 ```
 pointer `SUSPICIOUS_STRINGS[]` berisi 3 string untuk string yang akan di replace
 pointer `REPLACEMENT_STRINGS[]` berisi 3 string untuk string pengganti
+
+Membuat fungsi replace string
 
 ```
 void replace_string(const char *filename, const char *string_to_replace, const char *replacement_string) {
@@ -80,6 +82,9 @@ void replace_string(const char *filename, const char *string_to_replace, const c
 }
 ```
 Fungsi di atas untuk mereplace string
+Langkah awal mengecek program apakah bisa dibuka dan apabila bisa di buka memori akan dialokasikan selanjutnya file akan dibaca dan apabila terdapat string yang akan direplace maka akan tereplace di file nya. apabila replace string berhasil maka akan tertulis `Suspicious string at <filename> successfully replaced!`
+
+Membuat fungsi write log
 ```
 
 void write_log(const char *filename, const char *message) {
@@ -102,13 +107,20 @@ void write_log(const char *filename, const char *message) {
 }
 ```
 Fungsi di atas untuk menuliskan yang di lakukan oleh program ke dalam file virus.log
+file virus.log akan dibuka atau dibuat apabila program belum ada di dalam folder selanjutnya akan dicek apakah bisa dibuka. Data waktu dan tanggal akan tersimpan ke variabel local_time dan akan ditulis ke dalam file virus.log beserta dengan pesannya terakhir file akan ditutup 
+
 ```
 int main(int argc, char *argv[]) {
     if (argc < 2) {
         printf("Usage: %s <folder_path>\n", argv[0]);
         return 1;
     }
+```
+Fungsi utama dari program. Mengambil argumen dari baris perintah, di mana `argc` adalah jumlah argumen dan `argv` adalah array dari argumen-argumen tersebut
 
+Pembuatan Daemon
+Melakukan Fork pada Parent Process dan mematikan Parent Process
+```
     const char *folder_path = argv[1];
 
     pid_t pid, sid;
@@ -119,22 +131,32 @@ int main(int argc, char *argv[]) {
     if (pid > 0) {
         exit(EXIT_SUCCESS);
     }
-
+```
+Mengubah Mode File dengan umask
+```
     umask(0);
-
+```
+Membuat Unique Session ID (SID)
+```
     sid = setsid();
     if (sid < 0) {
         exit(EXIT_FAILURE);
     }
-
+```
+Mengubah Working Directory
+```
     if ((chdir("/")) < 0) {
         exit(EXIT_FAILURE);
     }
-
+```
+Menutup File Descriptor Standar
+```
     close(STDIN_FILENO);
     close(STDOUT_FILENO);
     close(STDERR_FILENO);
-
+```
+Membuat Loop Utama
+```
     while (1) {
         for (int i = 0; i < SUSPICIOUS_STRINGS_COUNT; i++) {
             replace_string(argv[1], SUSPICIOUS_STRINGS[i], REPLACEMENT_STRINGS[i]);
@@ -147,8 +169,27 @@ int main(int argc, char *argv[]) {
 }
 
 ```
-Program Daemon yang di buat dengan jeda 15 detik
+Loop akan berjalan selama nilai ekspresi 1 (true), yang berarti akan berjalan secara tak terbatas hingga program dihentikan secara paksa atau selesai. Iterasi pertama untuk mengakses setiap elemen dalam array `SUSPICIOUS_STRINGS` dan `REPLACEMENT_STRINGS`. Iterasi kedua untuk  memanggil fungsi `replace_string()` untuk replace string dalam file-file yang berada di dalam folder yang ditentukan. Iterasi ketiga untuk memanggil fungsi `write_log()` untuk mencatat tanggal, waktu, dan berhasil mereplace. Program Daemon di buat dengan jeda 15 detik
 
+Cara Menjalankan Program
+`gc -o <namaprogram> virus.c`
+`./<namaprogram> /path/to/folder`
+
+![Screenshot (73)](https://github.com/fqhhusain/Sisop-1-2024-MH-IT14/assets/149950475/731f5162-a99b-482c-8509-91f27d66c22d)
+
+Setelah program di jalankan
+
+![Screenshot (72)](https://github.com/fqhhusain/Sisop-1-2024-MH-IT14/assets/149950475/9e5af0f9-9f0b-40bf-8046-75ed3be03072)
+
+Terdata di dalam file virus.log
+
+![Screenshot (71)](https://github.com/fqhhusain/Sisop-1-2024-MH-IT14/assets/149950475/8c11e488-e7b3-4e93-bb64-07bc1c68d74b)
+
+### Kendala
+Kesusahan dalam membuat fungsi-fungsinya dan sempat bingung untuk alokasi file yang ada di scanning.
+
+### Revisi
+Tidak ada. 
 
 2. Paul adalah seorang mahasiswa semester 4 yang diterima magang di perusahaan XYZ. Pada hari pertama magang, ia diberi tugas oleh atasannya untuk membuat program manajemen file sederhana. Karena kurang terbiasa dengan bahasa C dan environment Linux, ia meminta bantuan kalian untuk mengembangkan program tersebut.
 
@@ -472,20 +513,6 @@ contoh penggunaan
 
 ![Screenshot_2024-04-24_03_29_55](https://github.com/fqhhusain/Sisop-2-2024-MH-IT14/assets/88548292/e61c6fc4-00ee-4fe2-b1fc-3550ee87575e)
 Catatan dari Asisten: file log bukan dibuat sebelum program management dijalankan tapi diawal saat proses yang akan dicatat dijalankan kemudian saat akan mencatat proses selanjutnya program akan mengecek apakah file log sudah ada
-```
-void log_action(char *username, char *filename, char *action) {
-    FILE *f = fopen("/home/kali/Sisop/soal_2/history.log", "a+");
-    if (f == NULL) {
-        printf("Error opening file!\n");
-        return;
-    }
-    time_t t = time(NULL);
-    struct tm tm = *localtime(&t);
-    fprintf(f, "[%s][%02d:%02d:%02d] - %s - %s\n", username, tm.tm_hour, tm.tm_min, tm.tm_sec, filename, action);
-    fclose(f);
-}
-```
-Perubahan code hasil revisi dengan menggunakan mode a+
 
 3. Pak Heze adalah seorang admin yang baik. Beliau ingin membuat sebuah program admin yang dapat memantau para pengguna sistemnya. Bantulah Pak Heze untuk membuat program  tersebut!
 - Nama program tersebut dengan nama admin.c
@@ -882,5 +909,3 @@ else {
 Contoh penggunaan
 ![4 (1)](https://github.com/fqhhusain/Sisop-2-2024-MH-IT14/assets/88548292/1a64e919-9054-4939-8e29-9922311d3a72)
 ![4 (2)](https://github.com/fqhhusain/Sisop-2-2024-MH-IT14/assets/88548292/a75fd038-804a-462a-8876-d2988d33b727)
-Revisi
-Tidak ada catatan dari aslab
