@@ -474,6 +474,223 @@ contoh penggunaan
 Catatan dari Asisten: file log bukan dibuat sebelum program management dijalankan tapi diawal saat proses yang akan dicatat dijalankan kemudian saat akan mencatat proses selanjutnya program akan mengecek apakah file log sudah ada
 
 3. Pak Heze adalah seorang admin yang baik. Beliau ingin membuat sebuah program admin yang dapat memantau para pengguna sistemnya. Bantulah Pak Heze untuk membuat program  tersebut!
+- Nama program tersebut dengan nama admin.c
+- Program tersebut memiliki fitur menampilkan seluruh proses yang dilakukan oleh seorang user dengan menggunakan command: ./admin <user> 
+- Program dapat memantau proses apa saja yang dilakukan oleh user. Fitur ini membuat program berjalan secara daemon dan berjalan terus menerus. Untuk menjalankan fitur ini menggunakan command: ./admin -m <user>
+- Dan untuk mematikan fitur tersebut menggunakan: ./admin -s <user>
+- Program akan mencatat seluruh proses yang dijalankan oleh user di file <user>.log dengan format: [dd:mm:yyyy]-[hh:mm:ss]_pid-process_nama-process_GAGAL/JALAN
+- Program dapat menggagalkan proses yang dijalankan user setiap detik secara terus menerus dengan menjalankan: ./admin -c user
+- sehingga user tidak bisa menjalankan proses yang dia inginkan dengan baik. Fitur ini dapat dimatikan dengan command: ./admin -a user
+- Ketika proses yang dijalankan user digagalkan, program juga akan melog dan menset log tersebut sebagai GAGAL. Dan jika di log menggunakan fitur poin c, log akan ditulis dengan JALAN
+
+### Solution
+Buat program dengan command "nano admin.c"
+```
+nano admin.c
+```
+Lalu edit di dalam file nano 
+
+Untuk librarynya
+```
+#!/bin/bash
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <time.h>
+#include <signal.h>
+#include <sys/wait.h>
+#include <dirent.h>
+#include <sys/ptrace.h>
+#include <sys/user.h>
+```
+Untuk deklarasi variabel 
+```
+#!/bin/bash
+
+#define LOG_FILE_EXTENSION ".log"
+#define MAX_USERNAME_LENGTH 100
+#define MAX_LOG_ENTRY_LENGTH 200
+#define MAX_COMMAND_LENGTH 200 // Perbesar ukuran buffer
+```
+Fungsi untuk mendapatkan waktu yang sesuai dengan waktu sekarang 
+```
+char* get_current_time() {
+    time_t rawtime;
+    struct tm *info;
+    char *buffer = (char*)malloc(sizeof(char) * 30);
+
+    time(&rawtime);
+    info = localtime(&rawtime);
+    strftime(buffer, 30, "%d:%m:%Y-%H:%M:%S", info);
+
+    return buffer;
+}
+```
+Fungsi untuk mendapatkan nama proses berdasarkan PID yang didapat ketika melakukan ps 
+```
+char* proc_name(char *pid) {
+    char proc_path[20];
+    FILE *fp;
+    static char proc_name[100];
+
+    snprintf(proc_path, sizeof(proc_path), "/proc/%s/comm", pid);
+    fp = fopen(proc_path, "r");
+    if (fp != NULL) {
+        fscanf(fp, "%s", proc_name);
+        fclose(fp);
+    } else {
+        strcpy(proc_name, "?");
+    }
+
+    return proc_name;
+}
+```
+Fungsi untuk melakukan pencatatan di file log, serta pengecekan apakah file log sudah tersedia atau belum tersedia. Jika file log belum tersedia maka akan dibuat sebuah file log
+```
+void log_event(char *username, char *pid, char *process_name, int success) {
+    char filename[MAX_USERNAME_LENGTH + strlen(LOG_FILE_EXTENSION) + 1];
+    snprintf(filename, sizeof(filename), "%s%s", username, LOG_FILE_EXTENSION);
+
+    FILE *file = fopen(filename, "a");
+    if (file != NULL) {
+        char *status = success ? "JALAN" : "GAGAL";
+        char *time_str = get_current_time();
+        char *proc = proc_name(pid);
+        char day_month_year[12], hour_minute_second[9];
+        sscanf(time_str, "%10[^-]-%9s", day_month_year, hour_minute_second);
+        fprintf(file, "[%s]-[%s]-%s-%s-%s_%s\n", day_month_year, hour_minute_second, pid, proc, process_name, status);
+        free(time_str);
+        fclose(file);
+    }
+}
+```
+Fungsi untuk memulai melakukan monitor ./admin -m <user>
+```
+void monitor_processes(char *username) {
+    char command[MAX_COMMAND_LENGTH + MAX_USERNAME_LENGTH + 3]; // "-u username\0"
+    snprintf(command, sizeof(command), "ps -u %s", username);
+
+    while (1) {
+        FILE *ps_output = popen(command, "r");
+        if (ps_output != NULL) {
+            char line[256];
+            fgets(line, sizeof(line), ps_output); // Skip header line
+            while (fgets(line, sizeof(line), ps_output) != NULL) {
+                char pid[10], process_name[100];
+                sscanf(line, "%s %s", pid, process_name);
+                log_event(username, pid, process_name, 1);
+            }
+            pclose(ps_output);
+        }
+        sleep(1);
+    }
+}
+```
+Fungai untuk menghentikan monitor ./admin -s <user>
+```
+void stop_monitoring(const char *username) {
+    char command[MAX_COMMAND_LENGTH]; // Perbesar ukuran buffer
+    snprintf(command, sizeof(command), "pkill -f './admin -m %s'", username);
+    int result = system(command);
+    if (result == -1) {
+        perror("Error stopping monitoring");
+    } else {
+        printf("Monitoring stopped for user: %s\n", username);
+    }
+}
+```
+Fungsi untuk menjalankan command yang diterima 
+```
+void handle_command(char *username, char *option, int argc, char *argv[]) {
+    char filename[MAX_USERNAME_LENGTH + strlen(LOG_FILE_EXTENSION) + 1];
+    snprintf(filename, sizeof(filename), "%s%s", username, LOG_FILE_EXTENSION);
+
+    static pid_t monitor_pid = -1; // Variabel untuk menyimpan PID proses monitor
+
+    if (strncmp(option, "-m", 2) == 0) {
+        if (monitor_pid == -1) {
+            monitor_pid = fork();
+            if (monitor_pid == 0) {
+                monitor_processes(username);
+            } else if (monitor_pid < 0) {
+                perror("Error forking");
+            }
+        } else {
+            printf("Monitoring already started for user: %s\n", username);
+        }
+    } else if (strncmp(option, "-s", 2) == 0) {
+        stop_monitoring(username);
+    } else if (strncmp(option, "-c", 2) == 0) {
+        log_event(username, "N/A", "Proses digagalkan", 0);
+        printf("Proses berhasil digagalkan untuk user: %s\n", username);
+    } else if (strncmp(option, "-a", 2) == 0) {
+        printf("Berhasil menghentikan proses penggagalan untuk user: %s\n", username);
+        if (monitor_pid != -1) {
+            if (kill(monitor_pid, SIGKILL) == -1) {
+                perror("Error! Gagal menghentikan penggagalan proses");
+            } else {
+                printf("Berhasil menghentikan penggagalan user: %s\n", username);
+            }
+            monitor_pid = -1;
+        }
+    } else {
+        printf("Invalid option: %s\n", option);
+    }
+}
+```
+Fungsi utama 
+```
+int main(int argc, char *argv[]) {
+    if (argc < 3) {
+        printf("Usage: %s <option> <username>\n", argv[0]);
+        return 1;
+    }
+
+    char *option = argv[1];
+    char *username = argv[2];
+    handle_command(username, option, argc, argv);
+
+    return 0;
+}
+```
+##### Dokumentasi Contoh Penggunaan Program
+Cara penggunaan :
+- ./admin -m <user> untuk memulai program 
+- ./admin -s <user> untuk mematikan program 
+- ./admin -c <user> untuk melakukan blocking proses user
+- ./admin -a <user> untuk melakukan unblocking proses user
+
+Penggunaan ketika menampilkan isi file <user>.log dengan command : cat tsll.log
+![Screenshot (591)](https://github.com/fqhhusain/Sisop-2-2024-MH-IT14/assets/150339585/f6838471-7dbd-452b-a699-d91dfa3bf9f3)
+
+Penggunaan ketika menjalankan command untuk mematikan program degan command : ./admin -c tsll
+![Screenshot (592)](https://github.com/fqhhusain/Sisop-2-2024-MH-IT14/assets/150339585/4bae47ea-36c8-4917-812c-152fe00a3ca0)
+
+Menampilkan isi file <user>.log setelah program dimatikan dengan command : cat tsll.log
+![Screenshot (593)](https://github.com/fqhhusain/Sisop-2-2024-MH-IT14/assets/150339585/9e586113-836a-4b50-9b82-1b636ff0797d)
+
+Penggunaan untuk menyalakan kembali program dengan : ./admin -m tsll
+Lalu melakukan program untuk menggagalkan proses user dengan command : ./admin -c tsll
+![Screenshot (594)](https://github.com/fqhhusain/Sisop-2-2024-MH-IT14/assets/150339585/702206ac-f812-4d04-908e-baa9bb6ca879)
+
+Menampilkan isi file <user>.log setelah dilakukan penggagalan proses user dengan mencari status GAGAL dengan command : cat tsll.log | grep GAGAL
+![Screenshot (595)](https://github.com/fqhhusain/Sisop-2-2024-MH-IT14/assets/150339585/8556e94f-22d7-4f09-9bff-2359ff8dbd83)
+
+Penggunaan untuk mematikan program penggagalan proses user dengan command : ./admin -a tsll
+![Screenshot (596)](https://github.com/fqhhusain/Sisop-2-2024-MH-IT14/assets/150339585/efec9224-4f80-47fa-9049-73c6c92d52a4)
+
+##### ERROR
+Ketika dijalankan program untuk menggagalkan proses user dengan command ./admin -c <user>, seharusnya user tidak bisa mengirim pesan ping menuju google.com. Tetapi di dalam program saya masih bisa berjalan 
+![Screenshot (597)](https://github.com/fqhhusain/Sisop-2-2024-MH-IT14/assets/150339585/9305103b-a10e-417b-9303-c383b31ff1de)
+
+##### Revisi
+Mohon maaf untuk saat ini masih belum bisa menemukan cara untuk memperbaiki program yang eror.
+
 
 4. Salomo memiliki passion yang sangat dalam di bidang sistem operasi. Saat ini, dia ingin mengotomasi kegiatan-kegiatan yang ia lakukan agar dapat bekerja secara efisien. Bantulah Salomo untuk membuat program yang dapat mengotomasi kegiatan dia!
 (NB: Soal di uji coba dan berhasil di sistem yang menggunakan MacOS dan linux yang menggunakan dual boot dan VM. Untuk teman-teman yang menggunakan WSL bisa mengerjakan soal yang lain ya)
