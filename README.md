@@ -472,6 +472,20 @@ contoh penggunaan
 
 ![Screenshot_2024-04-24_03_29_55](https://github.com/fqhhusain/Sisop-2-2024-MH-IT14/assets/88548292/e61c6fc4-00ee-4fe2-b1fc-3550ee87575e)
 Catatan dari Asisten: file log bukan dibuat sebelum program management dijalankan tapi diawal saat proses yang akan dicatat dijalankan kemudian saat akan mencatat proses selanjutnya program akan mengecek apakah file log sudah ada
+```
+void log_action(char *username, char *filename, char *action) {
+    FILE *f = fopen("/home/kali/Sisop/soal_2/history.log", "a+");
+    if (f == NULL) {
+        printf("Error opening file!\n");
+        return;
+    }
+    time_t t = time(NULL);
+    struct tm tm = *localtime(&t);
+    fprintf(f, "[%s][%02d:%02d:%02d] - %s - %s\n", username, tm.tm_hour, tm.tm_min, tm.tm_sec, filename, action);
+    fclose(f);
+}
+```
+Perubahan code hasil revisi dengan menggunakan mode a+
 
 3. Pak Heze adalah seorang admin yang baik. Beliau ingin membuat sebuah program admin yang dapat memantau para pengguna sistemnya. Bantulah Pak Heze untuk membuat program  tersebut!
 - Nama program tersebut dengan nama admin.c
