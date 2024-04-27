@@ -23,7 +23,11 @@ __________                             .__  __     ____   _____
 #include <pwd.h>
 
 void log_action(char *username, char *filename, char *action) {
-    FILE *f = fopen("/home/kali/Sisop/soal_2/history.log", "a");
+    FILE *f = fopen("/home/kali/Sisop/soal_2/history.log", "a+");
+    if (f == NULL) {
+        printf("Error opening file!\n");
+        return;
+    }
     time_t t = time(NULL);
     struct tm tm = *localtime(&t);
     fprintf(f, "[%s][%02d:%02d:%02d] - %s - %s\n", username, tm.tm_hour, tm.tm_min, tm.tm_sec, filename, action);
