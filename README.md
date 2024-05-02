@@ -529,9 +529,6 @@ void log_action(char *username, char *filename, char *action) {
 ```
 Perubahan code hasil revisi dengan menggunakan mode a+
 
-Revisi
-Tidak ada catatan dari aslab
-
 3. Pak Heze adalah seorang admin yang baik. Beliau ingin membuat sebuah program admin yang dapat memantau para pengguna sistemnya. Bantulah Pak Heze untuk membuat program  tersebut!
 - Nama program tersebut dengan nama admin.c
 - Program tersebut memiliki fitur menampilkan seluruh proses yang dilakukan oleh seorang user dengan menggunakan command: ./admin <user> 
@@ -927,3 +924,6 @@ else {
 Contoh penggunaan
 ![4 (1)](https://github.com/fqhhusain/Sisop-2-2024-MH-IT14/assets/88548292/1a64e919-9054-4939-8e29-9922311d3a72)
 ![4 (2)](https://github.com/fqhhusain/Sisop-2-2024-MH-IT14/assets/88548292/a75fd038-804a-462a-8876-d2988d33b727)
+
+Revisi
+Tidak ada catatan dari aslab
